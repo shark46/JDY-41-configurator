@@ -6,9 +6,8 @@ Just download .py file, install library needed:
 ```
 pip install pyserial
 ```
-and run .py file.
-
-## Or you can
+and run .py file.<br>
+Or you can
 ```
 git clone "https://github.com/shark46/JDY-41-configurator"
 ```
