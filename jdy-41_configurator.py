@@ -13,6 +13,7 @@ class JDY41Configurator:
     CMD_READ_PARAMS = bytes.fromhex("AA E2 0D 0A")
     CMD_READ_VERSION = bytes.fromhex("AA E4 0D 0A")
     CMD_READ_DEVICE_ID = bytes.fromhex("F2 AD 0D 0A")
+    CMD_SET_DEVICE_ID = bytes.fromhex("F1 AE")  # Префикс, ID добавляется
     
     # Префикс для команды записи параметров
     CMD_SET_PARAMS_PREFIX = bytes.fromhex("A9 E1")
@@ -25,10 +26,10 @@ class JDY41Configurator:
         self.serial_port = None
         self.is_connected = False
 
-        # Сопоставление значений
+        # Сопоставление значений (только до 38400)
         self.baud_rates = {
             "1200": "01", "2400": "02", "4800": "03", "9600": "04",
-            "19200": "05", "38400": "06", "57600": "07", "115200": "08"
+            "19200": "05", "38400": "06"
         }
         self.baud_rates_reverse = {v: k for k, v in self.baud_rates.items()}
         
@@ -59,11 +60,9 @@ class JDY41Configurator:
         if text == "":
             return True
         
-        # Проверяем, что строка содержит только HEX символы
         if not all(c in "0123456789ABCDEFabcdef" for c in text):
             return False
         
-        # Проверяем длину (не более 8 символов)
         if len(text) > 8:
             return False
         
@@ -73,22 +72,31 @@ class JDY41Configurator:
         """Обработчик изменения текста в поле Wireless ID"""
         text = self.id_var.get()
         
-        # Удаляем все не-HEX символы
         cleaned_text = ''.join(c for c in text if c in "0123456789ABCDEFabcdef")
         
-        # Ограничиваем длину 8 символами
         if len(cleaned_text) > 8:
             cleaned_text = cleaned_text[:8]
         
-        # Преобразуем в верхний регистр
         cleaned_text = cleaned_text.upper()
         
-        # Если текст изменился после очистки, обновляем поле
         if cleaned_text != text:
             self.id_var.set(cleaned_text)
 
+    def on_device_id_changed(self, *args):
+        """Обработчик изменения текста в поле Device ID"""
+        text = self.device_id_var.get()
+        
+        cleaned_text = ''.join(c for c in text if c in "0123456789ABCDEFabcdef")
+        
+        if len(cleaned_text) > 8:
+            cleaned_text = cleaned_text[:8]
+        
+        cleaned_text = cleaned_text.upper()
+        
+        if cleaned_text != text:
+            self.device_id_var.set(cleaned_text)
+
     def create_widgets(self):
-        # Основной контейнер
         main_frame = ttk.Frame(self.root)
         main_frame.grid(row=0, column=0, sticky="nsew")
         self.root.grid_rowconfigure(0, weight=1)
@@ -108,11 +116,10 @@ class JDY41Configurator:
         self.connect_button = ttk.Button(frame_connection, text="Подключиться", command=self.toggle_connection)
         self.connect_button.grid(row=0, column=3, padx=5)
 
-        # Кнопка сброса модуля
         self.reset_button = ttk.Button(frame_connection, text="Сброс модуля", command=self.reset_module, state=tk.DISABLED)
         self.reset_button.grid(row=0, column=4, padx=5)
 
-        # Фрейм параметров
+        # Фрейм параметров модуля
         frame_params = ttk.LabelFrame(main_frame, text="Параметры модуля", padding=10)
         frame_params.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
 
@@ -140,36 +147,55 @@ class JDY41Configurator:
         self.mode_combobox.set("Прозрачная передача (A0)")
         self.mode_combobox.grid(row=3, column=1, columnspan=2, sticky="w", pady=5)
 
-        # Wireless ID с валидацией
+        # Wireless ID
         ttk.Label(frame_params, text="Wireless ID (HEX):").grid(row=4, column=0, sticky="w", pady=5)
         
-        # Создаем строковую переменную для отслеживания изменений
         self.id_var = tk.StringVar()
         self.id_var.set("00000000")
         self.id_var.trace_add('write', self.on_id_entry_changed)
         
-        # Создаем поле ввода с привязкой к переменной
         self.id_entry = ttk.Entry(frame_params, width=10, textvariable=self.id_var)
         self.id_entry.grid(row=4, column=1, sticky="w", pady=5)
-        ttk.Label(frame_params, text="(8 HEX символов, напр. AABBCCDD)").grid(row=4, column=2, sticky="w", padx=5)
+        ttk.Label(frame_params, text="(8 HEX символов)").grid(row=4, column=2, sticky="w", padx=5)
 
         # Ответ на передачу данных
         self.response_var = tk.BooleanVar(value=True)
         self.response_checkbutton = ttk.Checkbutton(frame_params, text="Отвечать на приём данных", variable=self.response_var)
         self.response_checkbutton.grid(row=5, column=0, columnspan=3, sticky="w", pady=5)
 
-        # Кнопки действий
-        frame_actions = ttk.Frame(main_frame, padding=10)
-        frame_actions.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        # Кнопки действий с параметрами (внутри фрейма параметров)
+        frame_params_actions = ttk.Frame(frame_params)
+        frame_params_actions.grid(row=6, column=0, columnspan=3, pady=10)
 
-        self.read_button = ttk.Button(frame_actions, text="Прочитать параметры", command=self.read_params, state=tk.DISABLED)
+        self.read_button = ttk.Button(frame_params_actions, text="Прочитать параметры", command=self.read_params, state=tk.DISABLED)
         self.read_button.pack(side=tk.LEFT, padx=5)
 
-        self.write_button = ttk.Button(frame_actions, text="Записать параметры", command=self.write_params, state=tk.DISABLED)
+        self.write_button = ttk.Button(frame_params_actions, text="Записать параметры", command=self.write_params, state=tk.DISABLED)
         self.write_button.pack(side=tk.LEFT, padx=5)
 
-        self.clear_button = ttk.Button(frame_actions, text="Очистить лог", command=self.clear_log)
-        self.clear_button.pack(side=tk.LEFT, padx=5)
+        # Фрейм Device ID
+        frame_device_id = ttk.LabelFrame(main_frame, text="Device ID", padding=10)
+        frame_device_id.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+
+        ttk.Label(frame_device_id, text="Device ID (HEX):").grid(row=0, column=0, sticky="w", pady=5)
+        
+        self.device_id_var = tk.StringVar()
+        self.device_id_var.set("00000000")
+        self.device_id_var.trace_add('write', self.on_device_id_changed)
+        
+        self.device_id_entry = ttk.Entry(frame_device_id, width=10, textvariable=self.device_id_var)
+        self.device_id_entry.grid(row=0, column=1, sticky="w", pady=5)
+        ttk.Label(frame_device_id, text="(8 HEX символов, 0 = заводской ID)").grid(row=0, column=2, sticky="w", padx=5)
+
+        # Кнопки для Device ID
+        frame_device_actions = ttk.Frame(frame_device_id)
+        frame_device_actions.grid(row=1, column=0, columnspan=3, pady=5)
+
+        self.read_id_button = ttk.Button(frame_device_actions, text="Прочитать Device ID", command=self.read_device_id, state=tk.DISABLED)
+        self.read_id_button.pack(side=tk.LEFT, padx=5)
+
+        self.write_id_button = ttk.Button(frame_device_actions, text="Записать Device ID", command=self.write_device_id, state=tk.DISABLED)
+        self.write_id_button.pack(side=tk.LEFT, padx=5)
 
         # Лог
         frame_log = ttk.LabelFrame(main_frame, text="Лог", padding=10)
@@ -177,14 +203,28 @@ class JDY41Configurator:
         main_frame.grid_rowconfigure(3, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
 
-        self.log_text = tk.Text(frame_log, height=16, width=70, bg="#f0f0f0")
-        scrollbar = ttk.Scrollbar(frame_log, command=self.log_text.yview)
+        # Контейнер для текста лога и кнопки
+        log_container = ttk.Frame(frame_log)
+        log_container.grid(row=0, column=0, sticky="nsew")
+        frame_log.grid_rowconfigure(0, weight=1)
+        frame_log.grid_columnconfigure(0, weight=1)
+
+        # Текстовое поле лога
+        self.log_text = tk.Text(log_container, height=16, width=70, bg="#f0f0f0")
+        scrollbar = ttk.Scrollbar(log_container, command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
 
         self.log_text.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
-        frame_log.grid_rowconfigure(0, weight=1)
-        frame_log.grid_columnconfigure(0, weight=1)
+        log_container.grid_rowconfigure(0, weight=1)
+        log_container.grid_columnconfigure(0, weight=1)
+
+        # Кнопка очистки лога
+        clear_frame = ttk.Frame(frame_log)
+        clear_frame.grid(row=1, column=0, pady=5, sticky="ew")
+        
+        self.clear_button = ttk.Button(clear_frame, text="Очистить лог", command=self.clear_log)
+        self.clear_button.pack(side=tk.RIGHT, padx=5)
 
         self.create_context_menu()
 
@@ -225,13 +265,14 @@ class JDY41Configurator:
         self.log_text.configure(state=tk.DISABLED)
 
     def log(self, message):
-        self.root.after(0, self._log_to_widget, message)
-
-    def _log_to_widget(self, message):
-        self.log_text.configure(state=tk.NORMAL)
-        self.log_text.insert(tk.END, message + "\n")
-        self.log_text.see(tk.END)
-        self.log_text.configure(state=tk.DISABLED)
+        try:
+            self.log_text.configure(state=tk.NORMAL)
+            self.log_text.insert(tk.END, message + "\n")
+            self.log_text.see(tk.END)
+            self.log_text.configure(state=tk.DISABLED)
+            self.root.update_idletasks()
+        except Exception:
+            pass
 
     def refresh_ports(self):
         ports = [port.device for port in serial.tools.list_ports.comports()]
@@ -239,38 +280,86 @@ class JDY41Configurator:
         if ports:
             self.port_combobox.set(ports[0])
 
+    def disconnect(self):
+        """Отключение от модуля"""
+        if self.serial_port and self.serial_port.is_open:
+            self.serial_port.close()
+        self.is_connected = False
+        self.connect_button.config(text="Подключиться")
+        self.read_button.config(state=tk.DISABLED)
+        self.write_button.config(state=tk.DISABLED)
+        self.read_id_button.config(state=tk.DISABLED)
+        self.write_id_button.config(state=tk.DISABLED)
+        self.reset_button.config(state=tk.DISABLED)
+        self.log("⚠️ Соединение разорвано")
+
+    def clean_text_response(self, text):
+        """Очистка текстового ответа от управляющих символов"""
+        clean = text.replace('\r', '').replace('\n', '').replace('\0', '')
+        clean = clean.strip()
+        return clean
+
     def toggle_connection(self):
         if not self.is_connected:
             port = self.port_combobox.get()
             if not port:
                 messagebox.showerror("Ошибка", "Выберите COM-порт.")
                 return
+            
+            baud = int(self.baud_combobox.get())
+            
             try:
-                self.serial_port = serial.Serial(port, baudrate=9600, timeout=2)
+                self.log(f"🔌 Подключение к {port} на скорости {baud} бод...")
+                self.serial_port = serial.Serial(port, baudrate=baud, timeout=2)
+                time.sleep(0.3)
+                
                 self.is_connected = True
                 self.connect_button.config(text="Отключиться")
                 self.read_button.config(state=tk.NORMAL)
                 self.write_button.config(state=tk.NORMAL)
+                self.read_id_button.config(state=tk.NORMAL)
+                self.write_id_button.config(state=tk.NORMAL)
                 self.reset_button.config(state=tk.NORMAL)
-                self.log(f"Подключено к {port}")
-                self.send_command(self.CMD_RESET, "Сброс модуля")
+                self.log(f"✅ Подключено к {port} на скорости {baud} бод")
+                
+                # Отправляем сброс при подключении
+                self.log("🔄 Сброс модуля...")
+                response = self.send_command(self.CMD_RESET, "Сброс модуля при подключении")
+                if response:
+                    try:
+                        text_response = response.decode('ascii', errors='ignore')
+                        clean_text = self.clean_text_response(text_response)
+                        if clean_text:
+                            self.log(f"<< Ответ на сброс (текст): {clean_text}")
+                    except:
+                        pass
+                else:
+                    self.log("❌ Модуль не отвечает, разрываю соединение")
+                    self.disconnect()
+                
             except serial.SerialException as e:
                 messagebox.showerror("Ошибка подключения", f"Не удалось открыть порт {port}.\n{e}")
+                self.serial_port = None
+                self.is_connected = False
         else:
-            if self.serial_port and self.serial_port.is_open:
-                self.serial_port.close()
-            self.is_connected = False
-            self.connect_button.config(text="Подключиться")
-            self.read_button.config(state=tk.DISABLED)
-            self.write_button.config(state=tk.DISABLED)
-            self.reset_button.config(state=tk.DISABLED)
-            self.log("Отключено")
+            self.disconnect()
 
     def reset_module(self):
         """Сброс модуля по нажатию кнопки."""
         self.log("=" * 50)
         self.log("🔄 Сброс модуля...")
-        self.send_command(self.CMD_RESET, "Сброс модуля")
+        response = self.send_command(self.CMD_RESET, "Сброс модуля")
+        if response:
+            try:
+                text_response = response.decode('ascii', errors='ignore')
+                clean_text = self.clean_text_response(text_response)
+                if clean_text:
+                    self.log(f"<< Ответ (текст): {clean_text}")
+            except:
+                pass
+        else:
+            self.log("❌ Модуль не отвечает, разрываю соединение")
+            self.disconnect()
         self.log("=" * 50)
 
     def send_command(self, data, description):
@@ -281,16 +370,36 @@ class JDY41Configurator:
             self.log(f">> Отправка ({description}): {data.hex().upper()}")
             self.serial_port.reset_input_buffer()
             self.serial_port.write(data)
+            self.serial_port.flush()
             time.sleep(0.3)
             
             response = b''
-            while self.serial_port.in_waiting:
-                response += self.serial_port.read(self.serial_port.in_waiting)
+            timeout_start = time.time()
+            while time.time() - timeout_start < 2:
+                if self.serial_port.in_waiting:
+                    response += self.serial_port.read(self.serial_port.in_waiting)
                 time.sleep(0.05)
             
             if response:
-                ascii_response = response.decode('ascii', errors='ignore')
-                self.log(f"<< Ответ (HEX): {response.hex().upper()} | ASCII: {ascii_response}")
+                if "Сброс" in description:
+                    try:
+                        text_response = response.decode('ascii', errors='ignore')
+                        clean_text = self.clean_text_response(text_response)
+                        if clean_text:
+                            self.log(f"<< Ответ (текст): {clean_text}")
+                        else:
+                            self.log(f"<< Ответ (HEX): {response.hex().upper()}")
+                    except:
+                        self.log(f"<< Ответ (HEX): {response.hex().upper()}")
+                else:
+                    self.log(f"<< Ответ (HEX): {response.hex().upper()}")
+                    try:
+                        text_response = response.decode('ascii', errors='ignore')
+                        clean_text = self.clean_text_response(text_response)
+                        if clean_text:
+                            self.log(f"<< (текст): {clean_text}")
+                    except:
+                        pass
                 return response
             else:
                 self.log("<< Нет ответа")
@@ -405,24 +514,84 @@ class JDY41Configurator:
             messagebox.showerror("Ошибка параметров", str(e))
             return None
 
+    def read_device_id(self):
+        """Чтение Device ID модуля"""
+        self.log("=" * 50)
+        self.log("📡 Запрос Device ID...")
+        response = self.send_command(self.CMD_READ_DEVICE_ID, "Чтение Device ID")
+        if response:
+            self.log("📥 Получен ответ, разбираю...")
+            hex_str = response.hex().upper()
+            self.log(f"🔍 HEX строка: {hex_str}")
+            
+            # Проверяем заголовок F2AD
+            if hex_str.startswith("F2AD"):
+                # Убираем заголовок F2AD и окончание 0D0A
+                data_hex = hex_str[4:]
+                if data_hex.endswith("0D0A"):
+                    data_hex = data_hex[:-4]
+                
+                device_id = data_hex
+                self.log(f"✅ Device ID: {device_id}")
+                self.root.after(0, self.device_id_var.set, device_id)
+            else:
+                self.log(f"❌ Неверный заголовок: {hex_str[:4]} (ожидался F2AD)")
+        else:
+            self.log("❌ Модуль не ответил на запрос Device ID")
+            self.log("⚠️ Разрываю соединение")
+            self.disconnect()
+        self.log("=" * 50)
+
+    def write_device_id(self):
+        """Запись Device ID в модуль"""
+        self.log("=" * 50)
+        self.log("📝 Запись Device ID...")
+        
+        device_id = self.device_id_var.get().strip().upper()
+        if len(device_id) != 8 or not all(c in "0123456789ABCDEF" for c in device_id):
+            messagebox.showerror("Ошибка", "Device ID должен состоять ровно из 8 HEX символов (0-9, A-F).\nДля восстановления заводского ID укажите 00000000.")
+            return
+        
+        # Формируем команду: F1 AE + ID + 0D 0A
+        command = self.CMD_SET_DEVICE_ID + bytes.fromhex(device_id + " 0D 0A")
+        response = self.send_command(command, f"Запись Device ID: {device_id}")
+        if response:
+            # Проверяем ответ на OK
+            try:
+                text_response = response.decode('ascii', errors='ignore')
+                clean_text = self.clean_text_response(text_response)
+                if clean_text:
+                    self.log(f"✅ Device ID успешно записан")
+                    self.log(f"<< Ответ: {clean_text}")
+                else:
+                    self.log("✅ Device ID успешно записан")
+            except:
+                self.log("✅ Device ID успешно записан")
+        else:
+            self.log("❌ Не получен ответ при записи Device ID")
+            self.log("⚠️ Разрываю соединение")
+            self.disconnect()
+        self.log("=" * 50)
+
     def write_params(self):
-        """Запись параметров с автоматическим сбросом модуля."""
+        """Запись параметров по нажатию кнопки."""
         self.log("=" * 50)
         self.log("📝 Запись параметров в модуль...")
         cmd = self.build_params_command()
         if cmd:
             response = self.send_command(cmd, "Запись параметров")
             if response:
-                self.log("✅ Параметры записаны, выполняю сброс модуля...")
-                time.sleep(0.3)
-                self.send_command(self.CMD_RESET, "Сброс модуля после записи")
-                self.log("✅ Модуль перезагружен с новыми параметрами")
+                self.log("✅ Параметры успешно записаны")
+                self.log("🔄 Отключение от модуля...")
+                self.disconnect()
             else:
                 self.log("❌ Не получен ответ при записи параметров")
+                self.log("⚠️ Разрываю соединение")
+                self.disconnect()
         self.log("=" * 50)
 
     def read_params(self):
-        """Чтение текущих параметров модуля с автоматическим разбором."""
+        """Чтение текущих параметров модуля по нажатию кнопки."""
         self.log("=" * 50)
         self.log("📡 Запрос параметров модуля...")
         response = self.send_command(self.CMD_READ_PARAMS, "Чтение параметров")
@@ -436,7 +605,10 @@ class JDY41Configurator:
                 self.log("💡 Попробуйте нажать кнопку еще раз")
         else:
             self.log("❌ Модуль не ответил на запрос")
+            self.log("⚠️ Разрываю соединение")
+            self.disconnect()
         self.log("=" * 50)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
