@@ -8,7 +8,7 @@ pip install pyserial
 ```
 and run .py file.
 
-##Or you can
+## Or you can
 ```
 git clone "https://github.com/shark46/JDY-41-configurator"
 ```
