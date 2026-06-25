@@ -1,20 +1,5 @@
 <img src=Screenshot.png>
-Script was created by Deepseek with a bit of my assistance.
-Library needed for this script: pyserial.
+The script was created by DeepЫeek with a bit of my assistance.
+The library needed for this script is pyserial.
 
-Just download .py file, install library needed:
-```
-pip install pyserial
-```
-and run .py file.<br>
-Or you can
-```
-git clone "https://github.com/shark46/JDY-41-configurator"
-```
-```
-cd JDY-41-configurator
-```
-```
-pip install -r requirements.txt
-```
-and then run .py file.
+Just download the .py file and run it. The library will be installed automatically if not present.
