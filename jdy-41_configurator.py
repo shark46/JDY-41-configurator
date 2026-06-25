@@ -1,11 +1,36 @@
 #library needed: pyserial
 
-import serial
-import serial.tools.list_ports
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 import time
 import re
+import subprocess
+import sys
+import importlib.util
+
+
+def ensure_libraries(libs_dict):
+    """
+    Проверяет наличие библиотек и устанавливает их, если они отсутствуют.
+    
+    :param libs_dict: Словарь в формате {"имя_импорта": "имя_пакета_pip"}
+                      Пример: {"sklearn": "scikit-learn", "requests": "requests"}
+    """
+    for import_name, install_name in libs_dict.items():
+        # Проверяем, установлена ли библиотека
+        spec = importlib.util.find_spec(import_name)
+        if spec is None:
+            print(f"Библиотека '{import_name}' не найдена. Установка {install_name}...")
+            try:
+                # sys.executable гарантирует использование того же интерпретатора Python, 
+                # в котором запущен текущий скрипт (важно для venv)
+                subprocess.check_call([sys.executable, "-m", "pip", "install", install_name])
+                print(f"Библиотека {install_name} успешно установлена.")
+            except subprocess.CalledProcessError as e:
+                print(f"Ошибка при установке {install_name}: {e}")
+        else:
+            print(f"Библиотека '{import_name}' уже установлена.")
 
 class JDY41Configurator:
     # БИНАРНЫЕ КОМАНДЫ для JDY-41 
@@ -611,6 +636,12 @@ class JDY41Configurator:
 
 
 if __name__ == "__main__":
+    required_libs = {
+        "serial": "pyserial"
+    }
+    ensure_libraries(required_libs)
+    import serial
+    import serial.tools.list_ports
     root = tk.Tk()
     root.minsize(650, 500)
     app = JDY41Configurator(root)
