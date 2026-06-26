@@ -1,4 +1,4 @@
-#library needed: pyserial
+# library needed: pyserial
 
 
 import tkinter as tk
@@ -13,7 +13,7 @@ import importlib.util
 def ensure_libraries(libs_dict):
     """
     Проверяет наличие библиотек и устанавливает их, если они отсутствуют.
-    
+
     :param libs_dict: Словарь в формате {"имя_импорта": "имя_пакета_pip"}
                       Пример: {"sklearn": "scikit-learn", "requests": "requests"}
     """
@@ -63,7 +63,7 @@ class JDY41Configurator:
             "+3dB": "05", "+6dB": "06", "+9dB": "07", "+10dB": "08", "+12dB": "09"
         }
         self.power_levels_reverse = {v: k for k, v in self.power_levels.items()}
-        
+
         self.modes = {
             "Прозрачная передача (A0)": "A0",
             "Передатчик пульта с LED (C0)": "C0",
@@ -84,13 +84,13 @@ class JDY41Configurator:
         """Проверка ввода: только HEX символы и не более 8 символов"""
         if text == "":
             return True
-        
+
         if not all(c in "0123456789ABCDEFabcdef" for c in text):
             return False
-        
+
         if len(text) > 8:
             return False
-        
+
         return True
 
     def on_id_entry_changed(self, *args):
@@ -103,7 +103,7 @@ class JDY41Configurator:
             cleaned_text = cleaned_text[:8]
         
         cleaned_text = cleaned_text.upper()
-        
+
         if cleaned_text != text:
             self.id_var.set(cleaned_text)
 
@@ -112,12 +112,12 @@ class JDY41Configurator:
         text = self.device_id_var.get()
         
         cleaned_text = ''.join(c for c in text if c in "0123456789ABCDEFabcdef")
-        
+
         if len(cleaned_text) > 8:
             cleaned_text = cleaned_text[:8]
-        
+
         cleaned_text = cleaned_text.upper()
-        
+
         if cleaned_text != text:
             self.device_id_var.set(cleaned_text)
 
@@ -174,11 +174,11 @@ class JDY41Configurator:
 
         # Wireless ID
         ttk.Label(frame_params, text="Wireless ID (HEX):").grid(row=4, column=0, sticky="w", pady=5)
-        
+
         self.id_var = tk.StringVar()
         self.id_var.set("00000000")
         self.id_var.trace_add('write', self.on_id_entry_changed)
-        
+
         self.id_entry = ttk.Entry(frame_params, width=10, textvariable=self.id_var)
         self.id_entry.grid(row=4, column=1, sticky="w", pady=5)
         ttk.Label(frame_params, text="(8 HEX символов)").grid(row=4, column=2, sticky="w", padx=5)
@@ -203,11 +203,11 @@ class JDY41Configurator:
         frame_device_id.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
 
         ttk.Label(frame_device_id, text="Device ID (HEX):").grid(row=0, column=0, sticky="w", pady=5)
-        
+
         self.device_id_var = tk.StringVar()
         self.device_id_var.set("00000000")
         self.device_id_var.trace_add('write', self.on_device_id_changed)
-        
+
         self.device_id_entry = ttk.Entry(frame_device_id, width=10, textvariable=self.device_id_var)
         self.device_id_entry.grid(row=0, column=1, sticky="w", pady=5)
         ttk.Label(frame_device_id, text="(8 HEX символов, 0 = заводской ID)").grid(row=0, column=2, sticky="w", padx=5)
@@ -247,7 +247,7 @@ class JDY41Configurator:
         # Кнопка очистки лога
         clear_frame = ttk.Frame(frame_log)
         clear_frame.grid(row=1, column=0, pady=5, sticky="ew")
-        
+
         self.clear_button = ttk.Button(clear_frame, text="Очистить лог", command=self.clear_log)
         self.clear_button.pack(side=tk.RIGHT, padx=5)
 
@@ -330,14 +330,14 @@ class JDY41Configurator:
             if not port:
                 messagebox.showerror("Ошибка", "Выберите COM-порт.")
                 return
-            
+
             baud = int(self.baud_combobox.get())
-            
+
             try:
                 self.log(f"🔌 Подключение к {port} на скорости {baud} бод...")
                 self.serial_port = serial.Serial(port, baudrate=baud, timeout=2)
                 time.sleep(0.3)
-                
+
                 self.is_connected = True
                 self.connect_button.config(text="Отключиться")
                 self.read_button.config(state=tk.NORMAL)
@@ -346,7 +346,7 @@ class JDY41Configurator:
                 self.write_id_button.config(state=tk.NORMAL)
                 self.reset_button.config(state=tk.NORMAL)
                 self.log(f"✅ Подключено к {port} на скорости {baud} бод")
-                
+
                 # Отправляем сброс при подключении
                 self.log("🔄 Сброс модуля...")
                 response = self.send_command(self.CMD_RESET, "Сброс модуля при подключении")
@@ -361,7 +361,7 @@ class JDY41Configurator:
                 else:
                     self.log("❌ Модуль не отвечает, разрываю соединение")
                     self.disconnect()
-                
+
             except serial.SerialException as e:
                 messagebox.showerror("Ошибка подключения", f"Не удалось открыть порт {port}.\n{e}")
                 self.serial_port = None
@@ -397,14 +397,14 @@ class JDY41Configurator:
             self.serial_port.write(data)
             self.serial_port.flush()
             time.sleep(0.3)
-            
+
             response = b''
             timeout_start = time.time()
             while time.time() - timeout_start < 2:
                 if self.serial_port.in_waiting:
                     response += self.serial_port.read(self.serial_port.in_waiting)
                 time.sleep(0.05)
-            
+
             if response:
                 if "Сброс" in description:
                     try:
@@ -440,26 +440,26 @@ class JDY41Configurator:
             
             hex_str = response.hex().upper()
             self.log(f"🔍 HEX строка: {hex_str}")
-            
+
             while hex_str.startswith("AAE2AAE2"):
                 hex_str = hex_str[4:]
                 self.log(f"🔍 Убран дублирующийся заголовок, осталось: {hex_str}")
-            
+
             if not hex_str.startswith("AAE2"):
                 self.log(f"❌ Ответ не начинается с AAE2: {hex_str[:4]}")
                 return False
-            
+
             data_hex = hex_str[4:]
             self.log(f"🔍 Данные после заголовка: {data_hex}")
-            
+
             if data_hex.endswith("0D0A"):
                 data_hex = data_hex[:-4]
                 self.log(f"🔍 Данные без окончания 0D0A: {data_hex}")
-            
+
             if len(data_hex) < 10:
                 self.log(f"❌ Слишком короткие данные: {len(data_hex)} символов")
                 return False
-            
+
             baud_hex = data_hex[0:2]
             channel = int(data_hex[2:4], 16)
             power_hex = data_hex[4:6]
@@ -467,7 +467,7 @@ class JDY41Configurator:
             wireless_id = data_hex[8:16]
             response_byte = int(data_hex[16:18], 16) if len(data_hex) >= 18 else 0
             backup_byte = int(data_hex[18:20], 16) if len(data_hex) >= 20 else 0
-            
+
             self.log(f"✅ Параметры успешно разобраны:")
             self.log(f"   Скорость: {self.baud_rates_reverse.get(baud_hex, 'Неизвестно')} (0x{baud_hex})")
             self.log(f"   Канал: {channel} (0x{channel:02X})")
@@ -476,11 +476,11 @@ class JDY41Configurator:
             self.log(f"   Wireless ID: {wireless_id}")
             self.log(f"   Ответ на приём: {'Да' if response_byte == 1 else 'Нет'} (0x{response_byte:02X})")
             self.log(f"   Резерв: 0x{backup_byte:02X}")
-            
+
             self.root.after(0, self.update_gui_fields, baud_hex, channel, power_hex, mode_hex, wireless_id, response_byte)
-            
+
             return True
-            
+
         except Exception as e:
             self.log(f"❌ Ошибка разбора ответа: {e}")
             import traceback
@@ -490,29 +490,29 @@ class JDY41Configurator:
     def update_gui_fields(self, baud_hex, channel, power_hex, mode_hex, wireless_id, response_byte):
         """Обновление полей GUI на основе разобранных параметров."""
         self.log("📝 Обновляю поля интерфейса...")
-        
+
         baud_text = self.baud_rates_reverse.get(baud_hex)
         if baud_text:
             self.baud_combobox.set(baud_text)
             self.log(f"   Установлена скорость: {baud_text}")
-        
+
         self.channel_spinbox.delete(0, tk.END)
         self.channel_spinbox.insert(0, str(channel))
         self.log(f"   Установлен канал: {channel}")
-        
+
         power_text = self.power_levels_reverse.get(power_hex)
         if power_text:
             self.power_combobox.set(power_text)
             self.log(f"   Установлена мощность: {power_text}")
-        
+
         mode_text = self.modes_reverse.get(mode_hex)
         if mode_text:
             self.mode_combobox.set(mode_text)
             self.log(f"   Установлен режим: {mode_text}")
-        
+
         self.id_var.set(wireless_id)
         self.log(f"   Установлен ID: {wireless_id}")
-        
+
         self.response_var.set(response_byte == 0x01)
         self.log(f"   Ответ на приём: {'включен' if response_byte == 0x01 else 'выключен'}")
 
@@ -523,18 +523,18 @@ class JDY41Configurator:
             channel_hex = f"{channel:02X}"
             power_hex = self.power_levels[self.power_combobox.get()]
             mode_hex = self.modes[self.mode_combobox.get()]
-            
+
             id_str = self.id_var.get().strip().upper()
             if len(id_str) != 8 or not all(c in "0123456789ABCDEF" for c in id_str):
                 raise ValueError("Wireless ID должен состоять ровно из 8 HEX символов (0-9, A-F).")
-            
+
             response_hex = "01" if self.response_var.get() else "00"
             backup = "00"
 
             params_hex = f"{baud_hex} {channel_hex} {power_hex} {mode_hex} {id_str} {response_hex} {backup} 0D 0A"
             command = self.CMD_SET_PARAMS_PREFIX + bytes.fromhex(params_hex)
             return command
-            
+
         except Exception as e:
             messagebox.showerror("Ошибка параметров", str(e))
             return None
@@ -548,14 +548,14 @@ class JDY41Configurator:
             self.log("📥 Получен ответ, разбираю...")
             hex_str = response.hex().upper()
             self.log(f"🔍 HEX строка: {hex_str}")
-            
+
             # Проверяем заголовок F2AD
             if hex_str.startswith("F2AD"):
                 # Убираем заголовок F2AD и окончание 0D0A
                 data_hex = hex_str[4:]
                 if data_hex.endswith("0D0A"):
                     data_hex = data_hex[:-4]
-                
+
                 device_id = data_hex
                 self.log(f"✅ Device ID: {device_id}")
                 self.root.after(0, self.device_id_var.set, device_id)
@@ -571,12 +571,12 @@ class JDY41Configurator:
         """Запись Device ID в модуль"""
         self.log("=" * 50)
         self.log("📝 Запись Device ID...")
-        
+
         device_id = self.device_id_var.get().strip().upper()
         if len(device_id) != 8 or not all(c in "0123456789ABCDEF" for c in device_id):
             messagebox.showerror("Ошибка", "Device ID должен состоять ровно из 8 HEX символов (0-9, A-F).\nДля восстановления заводского ID укажите 00000000.")
             return
-        
+
         # Формируем команду: F1 AE + ID + 0D 0A
         command = self.CMD_SET_DEVICE_ID + bytes.fromhex(device_id + " 0D 0A")
         response = self.send_command(command, f"Запись Device ID: {device_id}")
@@ -646,3 +646,4 @@ if __name__ == "__main__":
     root.minsize(650, 500)
     app = JDY41Configurator(root)
     root.mainloop()
+    
